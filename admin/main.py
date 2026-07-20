@@ -22,13 +22,14 @@ app.add_middleware(
 )
 
 from .database import init_db
-from .routers import auth, logs, devices, exfil, users
+from .routers import auth, logs, devices, exfil, users, commands
 
 app.include_router(auth.router)
 app.include_router(logs.router)
 app.include_router(devices.router)
 app.include_router(exfil.router)
 app.include_router(users.router)
+app.include_router(commands.router)
 
 @app.get("/api/health")
 async def health_check():

