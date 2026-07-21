@@ -54,6 +54,7 @@ class DeviceResponse(BaseModel):
     user_agent: Optional[str] = None
     status: str
     os_version: Optional[str] = None
+    safari_version: Optional[str] = None
     device_model: Optional[str] = None
     chipset: Optional[str] = None
     jailbroken: Optional[str] = None
@@ -62,6 +63,7 @@ class DeviceResponse(BaseModel):
 
 class DeviceUpdate(BaseModel):
     os_version: Optional[str] = None
+    safari_version: Optional[str] = None
     device_model: Optional[str] = None
     chipset: Optional[str] = None
     jailbroken: Optional[str] = None

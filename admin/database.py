@@ -38,6 +38,7 @@ class Device(Base):
     user_agent = Column(String(500))
     status = Column(String(20), default="active")
     os_version = Column(String(50))
+    safari_version = Column(String(50))
     device_model = Column(String(100))
     chipset = Column(String(100))
     jailbroken = Column(String(10), default="unknown")

