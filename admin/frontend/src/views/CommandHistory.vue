@@ -13,9 +13,16 @@
         </el-select>
         <el-button type="primary" @click="loadCommands">查询</el-button>
         <el-button @click="resetFilters">重置</el-button>
+        <div class="action-buttons">
+          <el-button type="danger" @click="batchDelete" :disabled="selectedIds.length === 0">
+            批量删除 ({{ selectedIds.length }})
+          </el-button>
+          <el-button type="danger" @click="clearAll">清空全部</el-button>
+        </div>
       </div>
       
-      <el-table :data="commandsData" border v-loading="loading">
+      <el-table :data="commandsData" border v-loading="loading" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="device_uuid" label="设备UUID" width="250" />
         <el-table-column prop="command" label="命令" show-overflow-tooltip />
@@ -59,11 +66,13 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import axios from '../utils/axios'
+import { formatDateTime, formatStatus } from '../utils'
 
 const commandsData = ref([])
 const loading = ref(false)
 const outputDialogVisible = ref(false)
 const currentOutput = ref('')
+const selectedIds = ref([])
 
 const filters = reactive({
   device_uuid: '',
@@ -78,18 +87,20 @@ const pagination = reactive({
 })
 
 function getStatusType(status) {
-  const types = { 'pending': 'warning', 'executing': 'info', 'completed': 'success', 'failed': 'danger' }
-  return types[status] || 'info'
+  return formatStatus(status).type
 }
 
 function getStatusName(status) {
-  const names = { 'pending': '等待执行', 'executing': '执行中', 'completed': '已完成', 'failed': '失败' }
-  return names[status] || status
+  return formatStatus(status).label
 }
 
 function showOutput(row) {
   currentOutput.value = row.output || '无输出'
   outputDialogVisible.value = true
+}
+
+function handleSelectionChange(val) {
+  selectedIds.value = val.map(item => item.id)
 }
 
 async function loadCommands() {
@@ -103,7 +114,8 @@ async function loadCommands() {
     if (filters.status) params.append('status', filters.status)
     
     const response = await axios.get(`/api/commands?${params}`)
-    commandsData.value = response.data
+    commandsData.value = response.data.items
+    pagination.total = response.data.total
   } catch (error) {
     console.error('加载数据失败:', error)
   } finally {
@@ -127,6 +139,29 @@ async function deleteCommand(id) {
     loadCommands()
   } catch (error) {
     console.error('删除失败:', error)
+  }
+}
+
+async function batchDelete() {
+  if (selectedIds.value.length === 0) return
+  if (!confirm(`确定要删除选中的 ${selectedIds.value.length} 条命令吗？`)) return
+  try {
+    await axios.delete('/api/commands/batch', { data: { ids: selectedIds.value } })
+    selectedIds.value = []
+    loadCommands()
+  } catch (error) {
+    console.error('批量删除失败:', error)
+  }
+}
+
+async function clearAll() {
+  if (!confirm('确定要清空所有命令吗？此操作不可撤销！')) return
+  try {
+    await axios.delete('/api/commands/clear')
+    selectedIds.value = []
+    loadCommands()
+  } catch (error) {
+    console.error('清空失败:', error)
   }
 }
 
@@ -157,5 +192,12 @@ loadCommands()
   gap: 10px;
   margin-bottom: 20px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.action-buttons {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
 }
 </style>

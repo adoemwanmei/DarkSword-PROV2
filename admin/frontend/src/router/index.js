@@ -36,12 +36,7 @@ const routes = [
     component: () => import('../views/CommandHistory.vue'),
     meta: { requiresAuth: true }
   },
-  {
-    path: '/commands/scripts',
-    name: 'CommandScripts',
-    component: () => import('../views/CommandScripts.vue'),
-    meta: { requiresAuth: true }
-  },
+  
   {
     path: '/exfil',
     name: 'Exfil',
@@ -127,17 +122,58 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const token = localStorage.getItem('token')
-  const user = JSON.parse(localStorage.getItem('user') || 'null')
+  
+  if (to.path === '/login') {
+    if (token) {
+      try {
+        const response = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (response.ok) {
+          next('/')
+          return
+        }
+      } catch {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      }
+    }
+    next()
+    return
+  }
   
   if (to.meta.requiresAuth && !token) {
     next('/login')
-  } else if (to.meta.requiresAdmin && user?.role !== 'admin') {
-    next('/')
-  } else {
-    next()
+    return
   }
+  
+  if (to.meta.requiresAdmin) {
+    try {
+      const response = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (!response.ok) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        next('/login')
+        return
+      }
+      const user = await response.json()
+      if (user.role !== 'admin') {
+        next('/')
+        return
+      }
+    } catch {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      next('/login')
+      return
+    }
+  }
+  
+  next()
 })
 
 export default router

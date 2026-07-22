@@ -1,5 +1,60 @@
 <template>
   <div class="file-browser">
+    <el-row :gutter="15" class="stats-row">
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #f56c6c;">
+              <el-icon size="28"><Document /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.by_category?.files || 0 }}</div>
+              <div class="stat-label">文件总数</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #e6a23c;">
+              <el-icon size="28"><Iphone /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.devices || 0 }}</div>
+              <div class="stat-label">受影响设备</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #409eff;">
+              <el-icon size="28"><FolderOpened /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ folderCount }}</div>
+              <div class="stat-label">目录数量</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #67c23a;">
+              <el-icon size="28"><Box /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ totalSize }}</div>
+              <div class="stat-label">总大小</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-card>
       <div class="toolbar">
         <el-select v-model="selectedDevice" placeholder="选择设备" style="width: 250px;">
@@ -44,9 +99,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import axios from '../utils/axios'
-import { FolderOpened, Picture, Document } from '@element-plus/icons-vue'
+import { FolderOpened, Picture, Document, Iphone, Box } from '@element-plus/icons-vue'
 
 const devices = ref([])
 const selectedDevice = ref('')
@@ -56,15 +111,34 @@ const pathHistory = ref(['/'])
 const fileDialogVisible = ref(false)
 const fileContent = ref('')
 const currentFile = ref(null)
+const stats = ref({})
 
 const pathParts = computed(() => {
   return currentPath.value.split('/').filter(p => p)
 })
 
+const folderCount = computed(() => files.value.filter(f => f.type === 'directory').length)
+
+const totalSize = computed(() => {
+  const total = files.value.reduce((sum, f) => sum + (f.size || 0), 0)
+  if (total < 1024) return total + ' B'
+  if (total < 1024 * 1024) return (total / 1024).toFixed(2) + ' KB'
+  return (total / 1024 / 1024).toFixed(2) + ' MB'
+})
+
+async function loadStats() {
+  try {
+    const response = await axios.get('/api/exfil/stats')
+    stats.value = response.data
+  } catch (error) {
+    console.error('加载统计失败:', error)
+  }
+}
+
 async function loadDevices() {
   try {
     const response = await axios.get('/api/devices?limit=100')
-    devices.value = response.data
+    devices.value = Array.isArray(response.data) ? response.data : (response.data.items || [])
   } catch (error) {
     console.error('加载设备失败:', error)
   }
@@ -143,10 +217,49 @@ function getFileUrl(file) {
   return `/api/exfil/${file.id}/download`
 }
 
-loadDevices()
+onMounted(() => {
+  loadStats()
+  loadDevices()
+})
 </script>
 
 <style scoped>
+.stats-row {
+  margin-bottom: 15px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #999;
+  margin-top: 5px;
+}
+
 .toolbar {
   display: flex;
   align-items: center;

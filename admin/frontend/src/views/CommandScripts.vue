@@ -85,7 +85,7 @@ async function loadScripts() {
 async function loadDevices() {
   try {
     const response = await axios.get('/api/devices?limit=100')
-    devices.value = response.data
+    devices.value = Array.isArray(response.data) ? response.data : (response.data.items || [])
   } catch (error) {
     console.error('加载设备失败:', error)
   }

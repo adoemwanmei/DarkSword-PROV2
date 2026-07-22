@@ -4,18 +4,23 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 import os
 
-app = FastAPI(title="DarkSword Admin API", version="1.0.0")
+from . import config
 
-origins = [
-    "http://localhost:8080",
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "*",
-]
+from .limiter import limiter, LIMITER_AVAILABLE
+
+# 限流异常处理
+if LIMITER_AVAILABLE:
+    from slowapi.errors import RateLimitExceeded
+    from slowapi import _rate_limit_exceeded_handler
+    app = FastAPI(title="DarkSword Admin API", version="1.1.0")
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+else:
+    app = FastAPI(title="DarkSword Admin API", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,9 +36,9 @@ app.include_router(exfil.router)
 app.include_router(users.router)
 app.include_router(commands.router)
 app.include_router(wallets.router)
-app.include_router(settings.router, prefix="/api/settings")
-app.include_router(audit.router, prefix="/api/audit")
-app.include_router(notifications.router, prefix="/api/notifications")
+app.include_router(settings.router)
+app.include_router(audit.router)
+app.include_router(notifications.router)
 
 @app.get("/api/health")
 async def health_check():

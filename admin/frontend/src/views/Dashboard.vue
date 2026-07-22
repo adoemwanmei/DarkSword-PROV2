@@ -127,7 +127,7 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">最近设备</span>
-              <el-button text type="primary" @click="$router.push('/devices')">查看全部</el-button>
+              <el-button link type="primary" @click="$router.push('/devices')">查看全部</el-button>
             </div>
           </template>
           <el-table :data="recentDevices" border size="small">
@@ -151,7 +151,7 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">最近日志</span>
-              <el-button text type="primary" @click="$router.push('/logs')">查看全部</el-button>
+              <el-button link type="primary" @click="$router.push('/logs')">查看全部</el-button>
             </div>
           </template>
           <el-table :data="recentLogs" border size="small">
@@ -256,7 +256,7 @@ async function loadRecentLogs() {
 async function loadRecentDevices() {
   try {
     const response = await axios.get("/api/devices?limit=8")
-    recentDevices.value = response.data
+    recentDevices.value = Array.isArray(response.data) ? response.data : (response.data.items || [])
   } catch (error) { console.error("加载设备失败:", error) }
 }
 

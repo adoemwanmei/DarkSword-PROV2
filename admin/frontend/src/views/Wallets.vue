@@ -56,6 +56,34 @@
       </el-col>
     </el-row>
 
+    <!-- 支持的钱包类型 -->
+    <el-card class="supported-wallets-card">
+      <template #header>
+        <div class="card-header">
+          <span>支持的钱包类型 ({{ Object.keys(walletTypes).length }}种)</span>
+          <el-button link @click="toggleSupportedWallets">
+            {{ supportedWalletsExpanded ? '收起' : '展开' }}
+          </el-button>
+        </div>
+      </template>
+      <div v-show="supportedWalletsExpanded" class="supported-wallets-list">
+        <el-row :gutter="15">
+          <el-col :span="6" v-for="(info, type) in walletTypes" :key="type">
+            <div class="supported-wallet-item">
+              <div class="wallet-icon">
+                <el-icon size="24"><Wallet /></el-icon>
+              </div>
+              <div class="wallet-content">
+                <div class="wallet-name">{{ info.name }}</div>
+                <div class="wallet-chain">{{ info.chain }}</div>
+                <div class="wallet-bundle">{{ info.bundle_id }}</div>
+              </div>
+            </div>
+          </el-col>
+        </el-row>
+      </div>
+    </el-card>
+
     <!-- 钱包类型分布 -->
     <el-card v-if="stats.by_type && Object.keys(stats.by_type).length > 0" class="type-distribution">
       <template #header>
@@ -250,6 +278,7 @@ import { ref, reactive, onMounted } from 'vue'
 import axios from '../utils/axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Wallet, Iphone, Link, Key } from '@element-plus/icons-vue'
+import { formatBytes, formatDateTime } from '../utils'
 
 const walletsData = ref([])
 const loading = ref(false)
@@ -258,6 +287,7 @@ const stats = ref({})
 const mnemonicCount = ref(0)
 const selectedIds = ref([])
 const devices = ref([])
+const supportedWalletsExpanded = ref(false)
 
 const filters = reactive({
   device_uuid: '',
@@ -291,10 +321,7 @@ const scanForm = reactive({
 })
 
 function formatSize(size) {
-  if (!size) return '-'
-  if (size < 1024) return size + ' B'
-  if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB'
-  return (size / 1024 / 1024).toFixed(2) + ' MB'
+  return formatBytes(size)
 }
 
 function getWalletType(row) {
@@ -354,8 +381,8 @@ async function loadWallets() {
     if (filters.wallet_type) params.append('wallet_type', filters.wallet_type)
     
     const response = await axios.get(`/api/wallets?${params}`)
-    walletsData.value = response.data
-    pagination.total = response.data.length
+    walletsData.value = response.data.items
+    pagination.total = response.data.total
   } catch (error) {
     console.error('加载数据失败:', error)
   } finally {
@@ -363,10 +390,14 @@ async function loadWallets() {
   }
 }
 
+function toggleSupportedWallets() {
+  supportedWalletsExpanded.value = !supportedWalletsExpanded.value
+}
+
 async function loadDevices() {
   try {
     const response = await axios.get('/api/devices?limit=100')
-    devices.value = response.data
+    devices.value = Array.isArray(response.data) ? response.data : (response.data.items || [])
   } catch (error) {
     console.error('加载设备失败:', error)
   }
@@ -516,6 +547,70 @@ onMounted(() => {
 <style scoped>
 .stats-row {
   margin-bottom: 15px;
+}
+
+.supported-wallets-card {
+  margin-bottom: 15px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.supported-wallets-list {
+  margin-top: 10px;
+}
+
+.supported-wallet-item {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  border-radius: 12px;
+  padding: 20px;
+  color: #fff;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.supported-wallet-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(17, 153, 142, 0.4);
+}
+
+.wallet-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wallet-content {
+  flex: 1;
+}
+
+.wallet-name {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.wallet-chain {
+  font-size: 13px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+.wallet-bundle {
+  font-size: 11px;
+  opacity: 0.7;
+  font-family: monospace;
 }
 
 .stat-card {

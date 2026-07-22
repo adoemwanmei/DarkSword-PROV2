@@ -1,13 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, and_
 from datetime import datetime, timedelta
-from ..database import get_db, Log
+from ..database import get_db, Log, create_audit_log
 from ..auth import get_current_user
 from ..schemas import LogResponse, StatsResponse
+from ..limiter import rate_limit
 from typing import Optional, List
 
 router = APIRouter(prefix="/api/logs", tags=["logs"], redirect_slashes=False)
+
+
+class BatchDeleteRequest(BaseModel):
+    ids: List[int]
 
 
 @router.get("", response_model=List[LogResponse])
@@ -84,25 +90,74 @@ async def get_log_stats(db: Session = Depends(get_db), current_user=Depends(get_
     }
 
 
+@rate_limit("10/minute")
 @router.delete("/batch")
-async def batch_delete_logs(log_ids: List[int], db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    deleted = db.query(Log).filter(Log.id.in_(log_ids)).delete(synchronize_session=False)
+async def batch_delete_logs(
+    request: Request,
+    delete_request: BatchDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    if not delete_request.ids:
+        raise HTTPException(status_code=400, detail="No log IDs provided")
+    deleted = db.query(Log).filter(Log.id.in_(delete_request.ids)).delete(synchronize_session=False)
     db.commit()
+
+    username = current_user.username if current_user else "anonymous"
+    create_audit_log(
+        db, username=username, action="log_batch_delete", resource_type="log",
+        detail=f"Batch deleted {deleted} logs, IDs: {delete_request.ids[:10]}{'...' if len(delete_request.ids) > 10 else ''}",
+        ip_address=request.client.host if request.client else None
+    )
     return {"message": f"Deleted {deleted} logs"}
 
 
+@rate_limit("5/minute")
 @router.delete("/clear")
 async def clear_logs(
+    request: Request,
     log_type: Optional[str] = None,
     device_uuid: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
     query = db.query(Log)
+    filters = []
     if log_type:
         query = query.filter(Log.log_type == log_type)
+        filters.append(f"type={log_type}")
     if device_uuid:
         query = query.filter(Log.device_uuid == device_uuid)
+        filters.append(f"device={device_uuid}")
     deleted = query.delete(synchronize_session=False)
     db.commit()
+
+    username = current_user.username if current_user else "anonymous"
+    create_audit_log(
+        db, username=username, action="log_clear", resource_type="log",
+        detail=f"Cleared {deleted} logs{' (' + ', '.join(filters) + ')' if filters else ''}",
+        ip_address=request.client.host if request.client else None
+    )
     return {"message": f"Cleared {deleted} logs"}
+
+
+@router.delete("/{log_id}")
+async def delete_log(
+    request: Request,
+    log_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    log = db.query(Log).filter(Log.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Log not found")
+    db.delete(log)
+    db.commit()
+
+    username = current_user.username if current_user else "anonymous"
+    create_audit_log(
+        db, username=username, action="log_delete", resource_type="log",
+        resource_id=log_id, detail=f"Deleted log {log_id} (type={log.log_type}, path={log.path})",
+        ip_address=request.client.host if request.client else None
+    )
+    return {"message": "Log deleted"}

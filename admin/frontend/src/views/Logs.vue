@@ -81,6 +81,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from '../utils/axios'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const logs = ref([])
 const loading = ref(false)
@@ -177,7 +178,7 @@ async function batchDelete() {
     type: 'warning'
   })
   try {
-    await axios.delete('/api/logs/batch', { data: selectedIds.value })
+    await axios.delete('/api/logs/batch', { data: { ids: selectedIds.value } })
     ElMessage.success(`成功删除 ${selectedIds.value.length} 条日志`)
     loadLogs()
   } catch (error) {

